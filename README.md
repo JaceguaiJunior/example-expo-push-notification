@@ -1,18 +1,17 @@
-# Arquitetura Geral
+# Guia Completo: Notificações Push com Deep Linking (Expo + Spring Boot)
+
+Este guia detalha o passo a passo para implementar notificações push que, ao serem clicadas, abrem uma tela específica dentro do seu aplicativo (deep linking). Usaremos um frontend em **React Native com Expo** e um backend em **Java com Spring Boot**.
+
+## Arquitetura Geral
 
 O fluxo de dados funciona da seguinte forma:
 
-1. **App Expo** solicita permissão e obtém um `ExpoPushToken` único do dispositivo.
-
-2. **App Expo** envia esse token para o nosso **Backend Java Spring**.
-
-3. **Backend** armazena o token, associando-o a um usuário.
-
-4. Quando um evento ocorre, o **Backend** monta uma mensagem e a envia para a **API do Expo**, junto com o token do destinatário e um link (ex: `meuapp://produtos/123`).
-
-5. A **API do Expo** entrega a notificação ao dispositivo correto (iOS ou Android).
-
-6. O usuário clica na notificação, e o **App Expo** usa o link para navegar até a tela do produto 123.
+1.  **App Expo** solicita permissão e obtém um `ExpoPushToken` único do dispositivo.
+2.  **App Expo** envia esse token para o nosso **Backend Java Spring**.
+3.  **Backend** armazena o token, associando-o a um usuário.
+4.  Quando um evento ocorre, o **Backend** monta uma mensagem e a envia para a **API do Expo**, junto com o token do destinatário e um link (ex: `meuapp://produtos/123`).
+5.  A **API do Expo** entrega a notificação ao dispositivo correto (iOS ou Android).
+6.  O usuário clica na notificação, e o **App Expo** usa o link para navegar até a tela do produto 123.
 
 ## Parte 1: Configuração no Frontend (Expo)
 
@@ -25,9 +24,7 @@ npx expo install expo-notifications expo-device expo-linking
 ```
 
 * `expo-notifications`: Para lidar com tudo relacionado a notificações.
-
 * `expo-device`: Para verificar se o app está rodando em um dispositivo físico.
-
 * `expo-linking`: Para gerenciar os deep links.
 
 ### Passo 1.2: Configurar o Deep Link (URI Scheme)
@@ -82,11 +79,11 @@ export async function registerForPushNotificationsAsync() {
   try {
     const token = (await Notifications.getExpoPushTokenAsync({
       // Encontre seu projectId no app.json em "extra.eas.projectId"
-      projectId: 'SEU_PROJECT_ID_AQUI', 
+      projectId: 'SEU_PROJECT_ID_AQUI',
     })).data;
 
     console.log('Expo Push Token:', token);
-    
+
     // **AÇÃO:** Envie o token para o seu backend aqui.
     // await sendTokenToBackend(token);
 
@@ -96,7 +93,7 @@ export async function registerForPushNotificationsAsync() {
         importance: Notifications.AndroidImportance.MAX,
       });
     }
-    
+
     return token;
   } catch (error) {
     console.error('Erro ao obter o push token:', error);
@@ -122,7 +119,7 @@ export default function App() {
     // Listener ativado quando um usuário clica em uma notificação
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      
+
       if (data && data.url) {
         console.log('Notificação clicada! Abrindo deep link:', data.url);
         // Usa o expo-linking para navegar para a URL recebida
@@ -136,13 +133,13 @@ export default function App() {
   // Para que Linking.openURL funcione, seu sistema de navegação (ex: React Navigation)
   // precisa estar configurado para lidar com deep links.
   const linkingConfig = {
-      prefixes: [Linking.createURL('/')], // Usa o scheme do app.json (ex: meuapp://)
-      config: {
-          screens: {
-              Produto: 'produtos/:id', // Mapeia a rota 'produtos/:id' para a tela 'Produto'
-              // ... outras telas
-          }
+    prefixes: [Linking.createURL('/')], // Usa o scheme do app.json (ex: meuapp://)
+    config: {
+      screens: {
+        Produto: 'produtos/:id', // Mapeia a rota 'produtos/:id' para a tela 'Produto'
+        // ... outras telas
       }
+    }
   };
 
   return <NavigationContainer linking={linkingConfig} />;
@@ -195,20 +192,20 @@ public class PushMessage {
 public class ExpoNotificationService {
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private static final String EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+    private static final String EXPO_PUSH_URL = "[https://exp.host/--/api/v2/push/send](https://exp.host/--/api/v2/push/send)";
 
     public void sendNotificationWithDeepLink(String recipientToken, String title, String message, String url) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        
+
         // Cria o mapa de dados com a URL do deep link
         Map<String, Object> dataMap = Collections.singletonMap("url", url); // Ex: "meuapp://produtos/123"
 
         PushMessage notification = new PushMessage(recipientToken, title, message, dataMap);
-        
+
         List<PushMessage> notifications = Collections.singletonList(notification);
         HttpEntity<List<PushMessage>> request = new HttpEntity<>(notifications, headers);
-        
+
         try {
             String response = restTemplate.postForObject(EXPO_PUSH_URL, request, String.class);
             System.out.println("Resposta da API Expo: " + response);
@@ -224,39 +221,40 @@ public class ExpoNotificationService {
 > **Quando isso é necessário?**
 >
 > * **NÃO precisa** se você testa apenas no app **Expo Go** (`expo dev`).
->
 > * **PRECISA** se você vai gerar um app próprio (`.apk`) com `eas build`.
 
 ### Passo 3.1: Criar e Configurar um Projeto no Firebase
 
-1. Acesse o [Console do Firebase](https://console.firebase.google.com/) e crie um novo projeto.
-
-2. Dentro do projeto, clique no ícone do **Android** (</>) para adicionar um app.
-
-3. No campo **"Nome do pacote Android"**, insira o valor exato da chave `android.package` do seu `app.json` (ex: `com.seuusuario.seuapp`).
-
-4. Clique em **"Registrar app"**.
+1.  Acesse o [Console do Firebase](https://console.firebase.google.com/) e crie um novo projeto.
+2.  Dentro do projeto, clique no ícone do **Android** (</>) para adicionar um app.
+3.  No campo **"Nome do pacote Android"**, insira o valor exato da chave `android.package` do seu `app.json` (ex: `com.seuusuario.seuapp`).
+4.  Clique em **"Registrar app"**.
 
 ### Passo 3.2: Adicionar o Arquivo de Configuração ao Projeto
 
-1. Na próxima etapa, clique em **"Fazer o download de google-services.json"**.
+1.  Na próxima etapa, clique em **"Fazer o download de google-services.json"**.
+2.  Copie este arquivo `google-services.json` para a **raiz do seu projeto Expo**.
+3.  No seu `app.json`, adicione a seguinte linha dentro do objeto `android`:
 
-2. Copie este arquivo `google-services.json` para a **raiz do seu projeto Expo**.
-
-3. No seu `app.json`, adicione a seguinte linha dentro do objeto `android`:
-
-   ```json
-   "googleServicesFile": "./google-services.json"
-   ```
+    ```json
+    "googleServicesFile": "./google-services.json"
+    ```
 
 ### Passo 3.3: Fazer Upload das Credenciais do Servidor para o Expo (EAS)
 
-1. No Console do Firebase, vá em **Configurações do Projeto** > **Contas de serviço**.
-
-2. Clique em **"Gerar nova chave privada"**. Um arquivo JSON será baixado.
-
-3. No terminal, na raiz do seu projeto, rode `eas credentials`.
-
-4. Siga os passos: escolha `android`, e quando for solicitado pela **"FCM V1 service account key"**, abra o arquivo JSON que você baixou, copie todo o seu conteúdo e cole no terminal.
+1.  No Console do Firebase, vá em **Configurações do Projeto** > **Contas de serviço**.
+2.  Clique em **"Gerar nova chave privada"**. Um arquivo JSON será baixado.
+3.  No terminal, na raiz do seu projeto, rode `eas credentials`.
+4.  Siga os passos: escolha `android`, e quando for solicitado pela **"FCM V1 service account key"**, abra o arquivo JSON que você baixou, copie todo o seu conteúdo e cole no terminal.
 
 **Pronto!** Seu projeto está configurado para enviar notificações para builds próprios do seu aplicativo. Para iOS, o processo é similar e o `eas build` irá guiá-lo na configuração das credenciais da Apple (APNs).
+
+---
+
+## Referências
+
+* **Documentação Oficial do Expo Notifications:** [expo-notifications](https://docs.expo.dev/versions/latest/sdk/notifications/)
+* **Documentação Oficial do Expo Linking:** [expo-linking](https://docs.expo.dev/versions/latest/sdk/linking/)
+* **Console do Firebase:** [Firebase Console](https://console.firebase.google.com/)
+* **Exemplo de Modelagem do Banco de Dados:** [dbdiagram.io](https://dbdiagram.io/d/68dbbe47d2b621e42294c532)
+* **Ferramenta Expo para teste de notificações:** [Push notifications tool](https://expo.dev/notifications)
